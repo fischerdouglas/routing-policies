@@ -1,0 +1,95 @@
+This document describes the Internet Route Policies that are applyed to
+%CompanyName% with ASN %32BitsASN%.
+
+
+Observations about de communities and choosed numbers:
+ - %CompanyName% ASN %32BitsASN% is a 32 bits ASN, so it doens't fit on Standard or
+   Extended BGP Communities prefix.
+
+ - On Suffix of Informative and Traf-Eng BGP communities can represent:
+     - ASN(major) of Target/Source Peer.
+     - Peer-Type of Target/Source Peer.
+ 
+
+
+------------------------------------
+| About-Peer Types and Route-Types |
+------------------------------------
+
+---------------------------------------------------
+| Peer-Type              |    Default | Community |
+|             Route-Type | Local-Pref |    Suffix |
+---------------------------------------------------
+| All Types of Peers     |       N/A  |       909 |
+| %CompanyName% -  Self  |       850  |       908 |
+| Customers              |       750  |       907 |
+| CDNs-Caches            |       650  |       906 |
+| Private-Peering(PNIs)  |       450  |       905 |
+| Public-Peering(IXPs)   |       450  |       904 |
+| Transit                |       150  |       901 |
+|          Default Route |       N/A  |       990 |
+|      AS-PATH has Tier1 |       N/A  |       991 |
+|             Exceptions |       N/A  |       999 |
+---------------------------------------------------
+
+---------------------
+| About Communities |
+---------------------
+
+All communities with same prefix that those used on %CompanyName% will be scrubed
+on export to external Peers.
+
+
+Informative Communities
+-----------------------
+All communities with same prefix that those used to %CompanyName% Informative
+Communities will be scrubed on import of external Peers.
+
+Peer-Type - Community-Prefix -> 900
+  Std-Comm 900:<Peer-Type-From-Which-The-Route-was-Leaned>
+  Ext-Comm 900:<Peer-Type-From-Which-The-Route-was-Leaned>
+
+ASN Peer - Community-Prefix -> 901
+IF ASN 16Bits [1-65535] then
+  Std-Comm 901:<ASN-Peer-From-Which-The-Route-was-Leaned>
+  Ext-Comm 901:<ASN-Peer-From-Which-The-Route-was-Leaned>
+IF ASN 32Bits [65536-4294967295] then
+  Std-Comm 901:23456
+  Ext-Comm 901:<ASN-Peer-From-Which-The-Route-was-Leaned>
+
+
+Traffic Engineering Communities
+-------------------------------
+Only Transit Customers with Support to Seletive Target BGP communities provided
+for in will have that processed.
+Other than that, all communities with same prefix that those used to %CompanyName%
+Traffic Engineering Communities will be scrubed on import of external Peers
+
+Community-Prefix is 101X:<Peer-Type> - Actions on export
+(Will be processed in order, as soon it matches it stop processing)
+ 1019:<Peer-Type_or_Peer-Head-ASN> - Seletive Export Only-to <Target> 
+ 1013:<Peer-Type_or_Peer-Head-ASN> - Seletive 3 Prepends to <Target>
+ 1012:<Peer-Type_or_Peer-Head-ASN> - Seletive 2 Prepends to <Target>
+ 1011:<Peer-Type_or_Peer-Head-ASN> - Seletive 1 Prepend to <Target>
+ 1010:<Peer-Type_or_Peer-Head-ASN> - No action on Export
+                                     (Will be Ignored on Import)
+
+Community-Prefix is 102X:0 - Action On Import - Set Local-Pref
+ 1027:0 - Set Local-Pref to Lower then Customers
+ 1024:0 - Set Local-Pref to Lower then Public Peering
+ 1021:0 - Set Local-Pref to Lower then Transit
+
+
+Special Purpose Routes and Communities
+--------------------------------------
+Seletive No-Export
+ 0:<Peer-Type_or_Peer-Head-ASN> - Seletive No-Export to Target
+
+BlackHole
+ 666:<Peer-Type_or_Peer-Head-ASN> ->  Set BlackHole and Reannounce those routes
+ to all Peers that will accept Blackhole and receive Local-Pref 850.
+Standard Blackhole community
+65535:666 -> Will be remaped to 666:909 and receive Local-Pref 850.
+    That means Set Blackhole and reannounce it to all possible peers.
+
+
